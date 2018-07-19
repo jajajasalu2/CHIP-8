@@ -3,6 +3,7 @@ use rand::Rng;
 use sdl2::Sdl;
 use chip8::Keypad;
 use chip8::Display;
+use std::fs::File;
 
 pub struct CPU {
     memory: [u8; 4096],
@@ -64,6 +65,19 @@ impl CPU {
             keypad: keypad,
         }
     }
+    fn load_game(&mut self, game: String) {
+        let mut buffer: Vec<u8> = Vec::new();
+        let mut offset = 0;
+        let path = Path::new(game); 
+        match File::read(path) {
+            Ok(x) => buffer = x,
+            Err(error) => panic!("COULD NOT OPEN FILE"),
+        }
+        for element in buffer {
+            self.memory[0x200+offset] = element;
+            offset += 1;
+        }
+    }
     fn emulate_cycle(&mut self) {
         self.opcode = (self.memory[self.pc as usize] as u16) << 8 | (self.memory[self.pc as usize+1] as u16);
         let NNN = self.opcode & 0x0FFF;
@@ -79,9 +93,9 @@ impl CPU {
                 Some(popped) => self.pc = popped,
                 None => (),
             },
-            (0x0,_,_,_) => {
+            //(0x0,_,_,_) => {
                 //Calls RCA 1802 program (?) at address NNN
-            },
+            //},
             (0x1,_,_,_) => self.pc = NNN,
             (0x2,_,_,_) => {
                 self.stack.push(self.pc); 
@@ -258,7 +272,7 @@ impl CPU {
                 }
                 self.pc += 2;
             },
-            _ => panic!(format!("INVALID OPCODE: {}",self.opcode)),
+            _ => println!(format!("INVALID OPCODE: {}",self.opcode)),
         }
         if self.delay_timer > 0 {
             self.delay_timer = self.delay_timer - 1;

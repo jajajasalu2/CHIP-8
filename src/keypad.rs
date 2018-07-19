@@ -41,7 +41,7 @@ impl Keypad {
         hex_key
     }
     fn set_keys(&mut self) {
-        for event in event_pump.poll_iter() {
+        for event in self.event_pump.poll_iter() {
             match event {
                 Event::KeyDown { keycode: Some(x), .. } => self.key[mapping(x) as usize] = true,
                 Event::KeyUp { keycode: Some(x), .. } => self.key[mapping(x) as usize] = false,
@@ -52,7 +52,7 @@ impl Keypad {
     fn wait_for_input(&mut self) -> u8 {
         let mut flag = 0;
         loop {
-            for event in self.keypad.event_pump.poll_iter() {
+            for event in self.event_pump.poll_iter() {
                 match event {
                     Event::KeyDown { keycode:Some(x), .. ) } => {
                         return mapping(x);
