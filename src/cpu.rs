@@ -1,6 +1,8 @@
 extern crate rand;
 use rand::Rng;
+use sdl2::Sdl;
 use chip8::Keypad;
+use chip8::Display;
 
 pub struct CPU {
     memory: [u8; 4096],
@@ -8,10 +10,10 @@ pub struct CPU {
     V: [u8; 16],
     Index: u16,
     pc: u16,
-    gfx: [[bool; 32];64],
-    delay_timer: char,
-    sound_timer: char,
+    delay_timer: u8,
+    sound_timer: u8,
     stack: Vec<u16>,
+    display: chip8::Display,
     keypad: chip8::Keypad,
 }
 
@@ -21,11 +23,13 @@ impl CPU {
         let opcode = 0;
         let Index = 0;
         let stack = vec![];
-        let memory = [0x00; 4096];
-        let gfx = [[false;32];64];
+        let mut memory = [0x00; 4096];
         let delay_timer = 0;
         let sound_timer = 0;
         let V = [0x00; 16];
+        let sdl_context = sdl2::init().unwrap();
+        let display = chip8::Display::new(&sdl_context);
+        let keypad = chip8::Keypad::new(&sdl_context); 
         let fontset = vec![
              0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
              0x20, 0x60, 0x20, 0x20, 0x70, // 1
@@ -48,23 +52,16 @@ impl CPU {
             memory[0x50 + i] = fontset[i];
         }
         CPU {
+            opcode: opcode,
             memory: memory,
             pc: pc,
             stack: stack,
             Index: Index,
-            gfx: gfx,
             delay_timer: delay_timer,
             sound_timer: sound_timer,
             V: V,
-            keypad: chip8::Keypad::new(),
-        }
-    }
-    fn initialize(&mut self) {
-        self.pc = 0x200;
-        self.opcode = 0;
-        self.Index = 0;
-        for i in 0..79 {
-            self.memory[i] = self.fontset[i];
+            display: display,
+            keypad: keypad,
         }
     }
     fn emulate_cycle(&mut self) {
@@ -76,7 +73,7 @@ impl CPU {
         let (op1,op2,op3,op4) = ((self.opcode & 0xF000)>>12,self.opcode & 0x0F00 >> 8,self.opcode & 0x00F0 >> 4 , self.opcode & 0x000F);
         match (op1,op2,op3,op4) {
             (0x0,0x0,0xE,0x0) => {
-                //Clear screen
+                self.display.clear_screen();
             },
             (0x0,0x0,0xE,0xE) => match self.stack.pop() {
                 Some(popped) => self.pc = popped,
@@ -100,8 +97,11 @@ impl CPU {
             },
             (0x4,_,_,_) => {
                 if self.V[x] != NN {
-                    self.pc = self.pc + 4; } 
-                else { self.pc = self.pc + 2; }
+                    self.pc = self.pc + 4;
+                } 
+                else { 
+                    self.pc = self.pc + 2; 
+                }
             },
             (0x5,_,_,_) => {
                 if self.V[x] == self.V[y] {
@@ -177,15 +177,15 @@ impl CPU {
             (0xD,_,_,_) => {
                 let coord_x = self.V[x];
                 let coord_y = self.V[y];
-                let height = self.opcode & 0x000F;
+                let height = (self.opcode & 0x000F);
                 for row in 0..height-1 {
                     let pixel = self.memory[self.Index + row];
                     for column in 0..7 {
                         if pixel & (0x80 >> column) != 0x00 {
-                            if self.gfx[coord_x+column][coord_y+row] == 1 {
+                            if self.display.gfx[coord_x+column][coord_y+row] {
                                 self.V[0xF] = 0x1;
                             }
-                            self.gfx[coord_x+column][coord_y+row] ^= 1; 
+                            self.display.gfx[coord_x+column][coord_y+row] ^= true; 
                         }
                     }
                 }
@@ -210,7 +210,7 @@ impl CPU {
                 self.pc += 2;
             },
             (0xF,_,0x0,0xA) => {
-                self.V[x] = self.keypad.await_input();
+                self.V[x] = self.keypad.wait_for_input();
             },
             (0xF,_,0x1,0x8) => {
                 self.sound_timer = self.V[x];
@@ -248,7 +248,7 @@ impl CPU {
                 self.pc += 2;
             },
             (0xF,_,0x6,0x5) => {
-                let mut offset = &self.Index;
+                let mut offset = self.Index;
                 for i in (0x0..x) {
                     if offset > 4096 {
                         panic!("MEMORY CORRUPTION... EXITING");
