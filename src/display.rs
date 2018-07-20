@@ -4,9 +4,9 @@ use sdl2::rect::Point;
 use sdl2::pixels::Color;
 use sdl2::render::Canvas;
 
-struct Display {
+pub struct Display {
     gfx: [[bool; 32];64],
-    canvas: sdl2::render::Canvas,
+    canvas: sdl2::render::Canvas<sdl2::render::RenderTarget{type:Window}>,
 }
 
 impl Display {
@@ -33,15 +33,15 @@ impl Display {
             for column in 0..63 {
                 let point = Point::new(row,column);
                 if self.gfx[row][column] {
-                    canvas.set_draw_color(Color::RGB(255,255,255));
+                    self.canvas.set_draw_color(Color::RGB(255,255,255));
                 }
                 else {
-                    canvas.set_draw_color(Color::RGB(0,0,0));
+                    self.canvas.set_draw_color(Color::RGB(0,0,0));
                 }
-                canvas.draw_point(point);
+                self.canvas.draw_point(point);
             }
         }
-        canvas.clear();
-        canvas.present();
+        self.canvas.clear();
+        self.canvas.present();
     }
 }

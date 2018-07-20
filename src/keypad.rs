@@ -1,11 +1,10 @@
 extern crate sdl2;
-use chip8::cpu::Chip8;
 use sdl2::Sdl;
 use sdl2::keyboard::Keycode;
 use sdl2::event::Event;
 use sdl2::event::EventType;
 
-struct Keypad {
+pub struct Keypad {
     event_pump: sdl2::EventPump,
     key: [bool; 16],
 }
@@ -37,14 +36,14 @@ impl Keypad {
             Keycode::X => 0xD,
             Keycode::C => 0xE,
             Keycode::V => 0xF,
-        } 
+        }; 
         hex_key
     }
     fn set_keys(&mut self) {
         for event in self.event_pump.poll_iter() {
             match event {
-                Event::KeyDown { keycode: Some(x), .. } => self.key[mapping(x) as usize] = true,
-                Event::KeyUp { keycode: Some(x), .. } => self.key[mapping(x) as usize] = false,
+                Event::KeyDown { keycode: Some(x), .. } => self.key[keypad::Keypad::mapping(x) as usize] = true,
+                Event::KeyUp { keycode: Some(x), .. } => self.key[keypad::Keypad::mapping(x) as usize] = false,
                 _ => (),
             }
         }
@@ -54,8 +53,8 @@ impl Keypad {
         loop {
             for event in self.event_pump.poll_iter() {
                 match event {
-                    Event::KeyDown { keycode:Some(x), .. ) } => {
-                        return mapping(x);
+                    Event::KeyDown { keycode:Some(x), ..  } => {
+                        return keypad::Keypad::mapping(x);
                     },
                     _ => (),
                 }

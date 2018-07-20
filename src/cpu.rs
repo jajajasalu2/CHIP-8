@@ -1,9 +1,9 @@
+extern crate sdl2;
 extern crate rand;
-use rand::Rng;
-use sdl2::Sdl;
-use chip8::Keypad;
-use chip8::Display;
+use super::keypad::Keypad;
+use super::display::Display;
 use std::fs::File;
+use std::path::Path;
 
 pub struct CPU {
     memory: [u8; 4096],
@@ -14,8 +14,8 @@ pub struct CPU {
     delay_timer: u8,
     sound_timer: u8,
     stack: Vec<u16>,
-    display: chip8::Display,
-    keypad: chip8::Keypad,
+    display: Display,
+    keypad: Keypad,
 }
 
 impl CPU {
@@ -29,8 +29,8 @@ impl CPU {
         let sound_timer = 0;
         let V = [0x00; 16];
         let sdl_context = sdl2::init().unwrap();
-        let display = chip8::Display::new(&sdl_context);
-        let keypad = chip8::Keypad::new(&sdl_context); 
+        let display = Display::new(&sdl_context);
+        let keypad = Keypad::new(&sdl_context); 
         let fontset = vec![
              0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
              0x20, 0x60, 0x20, 0x20, 0x70, // 1
@@ -185,13 +185,13 @@ impl CPU {
             },
             (0xB,_,_,_) => self.pc = NNN + self.V[0x0] as u16,
             (0xC,_,_,_) => {
-                self.V[x] = NN & (rand::thread_rng().gen_range(0,255));
+                self.V[x] = NN & (rand::random() as u8);
                 self.pc = self.pc + 2;
             },
             (0xD,_,_,_) => {
                 let coord_x = self.V[x];
                 let coord_y = self.V[y];
-                let height = (self.opcode & 0x000F);
+                let height = self.opcode & 0x000F;
                 for row in 0..height-1 {
                     let pixel = self.memory[self.Index + row];
                     for column in 0..7 {
@@ -252,7 +252,7 @@ impl CPU {
             },
             (0xF,_,0x5,0x5) => {
                 let mut offset = self.Index;
-                for i in (0x0..x) {
+                for i in 0x0..x {
                     if offset > 4096 {
                         panic!("MEMORY CORRUPTION... EXITING");
                     }
@@ -263,7 +263,7 @@ impl CPU {
             },
             (0xF,_,0x6,0x5) => {
                 let mut offset = self.Index;
-                for i in (0x0..x) {
+                for i in 0x0..x {
                     if offset > 4096 {
                         panic!("MEMORY CORRUPTION... EXITING");
                     }
@@ -272,7 +272,7 @@ impl CPU {
                 }
                 self.pc += 2;
             },
-            _ => println!(format!("INVALID OPCODE: {}",self.opcode)),
+            _ => println!("INVALID OPCODE: {}",self.opcode),
         }
         if self.delay_timer > 0 {
             self.delay_timer = self.delay_timer - 1;
