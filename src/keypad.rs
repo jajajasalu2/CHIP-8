@@ -5,12 +5,12 @@ use sdl2::event::Event;
 use sdl2::event::EventType;
 
 pub struct Keypad {
-    event_pump: sdl2::EventPump,
-    key: [bool; 16],
+    pub event_pump: sdl2::EventPump,
+    pub key: [bool; 16],
 }
 
 impl Keypad {
-    fn new(sdl_context: &sdl2::Sdl) -> Self {
+    pub fn new(sdl_context: &sdl2::Sdl) -> Self {
         let event_pump = sdl_context.event_pump().unwrap();
         let key = [false; 16];
         Keypad {
@@ -18,7 +18,7 @@ impl Keypad {
             key: key,
         }
     }
-    fn mapping(keycode: Keycode) -> u8 {
+    pub fn mapping(keycode: Keycode) -> u8 {
         let mut hex_key = match keycode {
             Keycode::Kp1 => 0x0,
             Keycode::Kp2 => 0x1,
@@ -39,22 +39,21 @@ impl Keypad {
         }; 
         hex_key
     }
-    fn set_keys(&mut self) {
+    pub fn set_keys(&mut self) {
         for event in self.event_pump.poll_iter() {
             match event {
-                Event::KeyDown { keycode: Some(x), .. } => self.key[keypad::Keypad::mapping(x) as usize] = true,
-                Event::KeyUp { keycode: Some(x), .. } => self.key[keypad::Keypad::mapping(x) as usize] = false,
+                Event::KeyDown { keycode: Some(x), .. } => self.key[Keypad::mapping(x) as usize] = true,
+                Event::KeyUp { keycode: Some(x), .. } => self.key[Keypad::mapping(x) as usize] = false,
                 _ => (),
             }
         }
     }
-    fn wait_for_input(&mut self) -> u8 {
-        let mut flag = 0;
+    pub fn wait_for_input(&mut self) -> u8 {
         loop {
             for event in self.event_pump.poll_iter() {
                 match event {
                     Event::KeyDown { keycode:Some(x), ..  } => {
-                        return keypad::Keypad::mapping(x);
+                        return Keypad::mapping(x);
                     },
                     _ => (),
                 }

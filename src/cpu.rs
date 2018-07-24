@@ -68,7 +68,7 @@ impl CPU {
     fn load_game(&mut self, game: String) {
         let mut buffer: Vec<u8> = Vec::new();
         let mut offset = 0;
-        let path = Path::new(game); 
+        let path = Path::new(&game); 
         match File::read(path) {
             Ok(x) => buffer = x,
             Err(error) => panic!("COULD NOT OPEN FILE"),
@@ -185,21 +185,21 @@ impl CPU {
             },
             (0xB,_,_,_) => self.pc = NNN + self.V[0x0] as u16,
             (0xC,_,_,_) => {
-                self.V[x] = NN & (rand::random() as u8);
+                self.V[x] = NN & (rand::random::<u8>() as u8);
                 self.pc = self.pc + 2;
             },
             (0xD,_,_,_) => {
                 let coord_x = self.V[x];
                 let coord_y = self.V[y];
-                let height = self.opcode & 0x000F;
+                let height = (self.opcode & 0x000F) as u8;
                 for row in 0..height-1 {
-                    let pixel = self.memory[self.Index + row];
+                    let pixel = self.memory[(self.Index + row as u16) as usize];
                     for column in 0..7 {
                         if pixel & (0x80 >> column) != 0x00 {
-                            if self.display.gfx[coord_x+column][coord_y+row] {
+                            if self.display.gfx[(coord_x+column) as usize][(coord_y+row) as usize] {
                                 self.V[0xF] = 0x1;
                             }
-                            self.display.gfx[coord_x+column][coord_y+row] ^= true; 
+                            self.display.gfx[(coord_x+column) as usize][(coord_y+row) as usize] ^= true; 
                         }
                     }
                 }
@@ -245,13 +245,13 @@ impl CPU {
                 self.pc += 2;
             },
             (0xF,_,0x3,0x3) => {
-                self.memory[self.Index] = self.V[x] / 100;
-                self.memory[self.Index + 0x1] = (self.V[x] / 10) % 10;
-                self.memory[self.Index + 0x2] = self.V[x] % 10; 
+                self.memory[(self.Index) as usize] = self.V[x] / 100;
+                self.memory[(self.Index + 0x1) as usize] = (self.V[x] / 10) % 10;
+                self.memory[(self.Index + 0x2) as usize] = self.V[x] % 10; 
                 self.pc += 2;
             },
             (0xF,_,0x5,0x5) => {
-                let mut offset = self.Index;
+                let mut offset = self.Index as usize;
                 for i in 0x0..x {
                     if offset > 4096 {
                         panic!("MEMORY CORRUPTION... EXITING");
@@ -262,7 +262,7 @@ impl CPU {
                 self.pc += 2;
             },
             (0xF,_,0x6,0x5) => {
-                let mut offset = self.Index;
+                let mut offset = self.Index as usize;
                 for i in 0x0..x {
                     if offset > 4096 {
                         panic!("MEMORY CORRUPTION... EXITING");

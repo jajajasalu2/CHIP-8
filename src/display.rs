@@ -5,12 +5,12 @@ use sdl2::pixels::Color;
 use sdl2::render::Canvas;
 
 pub struct Display {
-    gfx: [[bool; 32];64],
-    canvas: sdl2::render::Canvas<sdl2::render::RenderTarget{type:Window}>,
+    pub gfx: [[bool; 32];64],
+    pub canvas: sdl2::render::Canvas<Window>,
 }
 
 impl Display {
-    fn new(sdl_context: &sdl2::Sdl) -> Self {
+    pub fn new(sdl_context: &sdl2::Sdl) -> Self {
         let video_subsystem = sdl_context.video().unwrap();
         let window = video_subsystem.window("CHIP-8",64,32)
             .position_centered()
@@ -23,16 +23,16 @@ impl Display {
             gfx: [[false;32];64],
             canvas: canvas,
         }
-    }
-    fn clear_screen(&mut self) {
+    } 
+    pub fn clear_screen(&mut self) {
         self.gfx = [[false;32];64];
         self.draw();
     }
-    fn draw(&mut self) {
+    pub fn draw(&mut self) {
         for row in 0..31 {
             for column in 0..63 {
                 let point = Point::new(row,column);
-                if self.gfx[row][column] {
+                if self.gfx[row as usize][column as usize] {
                     self.canvas.set_draw_color(Color::RGB(255,255,255));
                 }
                 else {
