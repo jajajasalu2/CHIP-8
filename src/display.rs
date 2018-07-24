@@ -6,7 +6,7 @@ use sdl2::render::Canvas;
 
 pub struct Display {
     pub gfx: [[bool; 32];64],
-    pub canvas: sdl2::render::Canvas<Window>,
+    pub canvas: sdl2::render::Canvas<sdl2::video::Window>,
 }
 
 impl Display {

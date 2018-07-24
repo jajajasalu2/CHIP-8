@@ -36,6 +36,7 @@ impl Keypad {
             Keycode::X => 0xD,
             Keycode::C => 0xE,
             Keycode::V => 0xF,
+	    _ => panic!("INVALID INPUT"),
         }; 
         hex_key
     }

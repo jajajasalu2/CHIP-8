@@ -2,6 +2,8 @@ extern crate sdl2;
 extern crate rand;
 use super::keypad::Keypad;
 use super::display::Display;
+use std::io::*;
+use std::io::prelude::*;
 use std::fs::File;
 use std::path::Path;
 
@@ -14,12 +16,12 @@ pub struct CPU {
     delay_timer: u8,
     sound_timer: u8,
     stack: Vec<u16>,
-    display: Display,
-    keypad: Keypad,
+    pub display: Display,
+    pub keypad: Keypad,
 }
 
 impl CPU {
-    fn new() -> Self {
+    pub fn new() -> Self {
         let pc = 0x0200;
         let opcode = 0;
         let Index = 0;
@@ -65,20 +67,17 @@ impl CPU {
             keypad: keypad,
         }
     }
-    fn load_game(&mut self, game: String) {
+    pub fn load_game(&mut self, game: &String) {
         let mut buffer: Vec<u8> = Vec::new();
-        let mut offset = 0;
-        let path = Path::new(&game); 
-        match File::read(path) {
-            Ok(x) => buffer = x,
-            Err(error) => panic!("COULD NOT OPEN FILE"),
-        }
+        let mut offset = 0x0;
+	let mut f = File::open(game).expect("COULD NOT OPEN GAME");
+	f.read_to_end(&mut buffer).expect("COULD NOT READ GAME");
         for element in buffer {
-            self.memory[0x200+offset] = element;
+            self.memory[(0x200+offset) as usize] = element;
             offset += 1;
         }
     }
-    fn emulate_cycle(&mut self) {
+    pub fn emulate_cycle(&mut self) {
         self.opcode = (self.memory[self.pc as usize] as u16) << 8 | (self.memory[self.pc as usize+1] as u16);
         let NNN = self.opcode & 0x0FFF;
         let NN = (self.opcode & 0x00FF) as u8;
