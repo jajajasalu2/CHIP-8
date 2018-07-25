@@ -8,7 +8,10 @@ fn main() {
     system.load_game(game);
     loop {
         system.emulate_cycle(); 
-        system.display.draw();
+        if system.drawFlag {
+            system.display.draw();
+            system.drawFlag = false;
+        }
         system.keypad.set_keys();
     }
 }

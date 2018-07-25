@@ -16,6 +16,7 @@ pub struct CPU {
     delay_timer: u8,
     sound_timer: u8,
     stack: Vec<u16>,
+    pub drawFlag: bool,
     pub display: Display,
     pub keypad: Keypad,
 }
@@ -63,6 +64,7 @@ impl CPU {
             delay_timer: delay_timer,
             sound_timer: sound_timer,
             V: V,
+            drawFlag: false,
             display: display,
             keypad: keypad,
         }
@@ -193,20 +195,22 @@ impl CPU {
                 self.pc = self.pc + 2;
             },
             (0xD,_,_,_) => {
-                let coord_x = self.V[x];
-                let coord_y = self.V[y];
+                let coord_x: u16 = self.V[x] as u16;
+                let coord_y: u16 = self.V[y] as u16;
                 let height = (self.opcode & 0x000F) as u8;
-                for row in 0..height-1 {
-                    let pixel = self.memory[(self.Index + row as u16) as usize];
-                    for column in 0..7 {
+                for row in 0..height {
+                    let pixel = self.memory[(self.Index + row as u16) as usize]; 
+                    for column in 0..8 {
                         if pixel & (0x80 >> column) != 0x00 {
-                            if self.display.gfx[(coord_x+column) as usize][(coord_y+row) as usize] {
+                            println!("{}",coord_y+row as u16);
+                            if self.display.gfx[((coord_x+column as u16) + ((coord_y+row as u16) * 64)) as usize] == true {
                                 self.V[0xF] = 0x1;
                             }
-                            self.display.gfx[(coord_x+column) as usize][(coord_y+row) as usize] ^= true; 
+                            self.display.gfx[((coord_x+column as u16)+ ((coord_y+row as u16) * 64)) as usize] ^= true; 
                         }
                     }
                 }
+                self.drawFlag = true;
                 self.pc += 2;
             },
             (0xE,_,0x9,0xE) => {
