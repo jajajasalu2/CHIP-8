@@ -70,20 +70,25 @@ impl CPU {
     pub fn load_game(&mut self, game: &String) {
         let mut buffer: Vec<u8> = Vec::new();
         let mut offset = 0x0;
-	let mut f = File::open(game).expect("COULD NOT OPEN GAME");
-	f.read_to_end(&mut buffer).expect("COULD NOT READ GAME");
+	    let mut f = File::open(game).expect("COULD NOT OPEN GAME");
+	    f.read_to_end(&mut buffer).expect("COULD NOT READ GAME");
         for element in buffer {
             self.memory[(0x200+offset) as usize] = element;
             offset += 1;
         }
+        println!("LOADED");
     }
     pub fn emulate_cycle(&mut self) {
         self.opcode = (self.memory[self.pc as usize] as u16) << 8 | (self.memory[self.pc as usize+1] as u16);
+        println!("{:X}",self.opcode);
         let NNN = self.opcode & 0x0FFF;
         let NN = (self.opcode & 0x00FF) as u8;
         let x: usize = ((self.opcode & 0x0F00) >> 8) as usize;
         let y: usize = ((self.opcode & 0x00F0) >> 4) as usize;
-        let (op1,op2,op3,op4) = ((self.opcode & 0xF000)>>12,self.opcode & 0x0F00 >> 8,self.opcode & 0x00F0 >> 4 , self.opcode & 0x000F);
+        let op1 = (self.opcode & 0xF000) >> 12;
+        let op2 = (self.opcode & 0x0F00) >> 8;
+        let op3 = (self.opcode & 0x00F0) >> 4;
+        let op4 = self.opcode & 0x000F;
         match (op1,op2,op3,op4) {
             (0x0,0x0,0xE,0x0) => {
                 self.display.clear_screen();
@@ -238,8 +243,6 @@ impl CPU {
                 self.pc += 2;
             },
             (0xF,_,0x2,0x9) => {
-                /*Sets I to the location of the sprite for the character in VX. 
-                 *Characters 0-F (in hexadecimal) are represented by a 4x5 font. */
                 self.Index = self.V[x] as u16;
                 self.pc += 2;
             },
@@ -271,7 +274,7 @@ impl CPU {
                 }
                 self.pc += 2;
             },
-            _ => println!("INVALID OPCODE: {}",self.opcode),
+            _ => println!("INVALID OPCODE: {:X}",self.opcode),
         }
         if self.delay_timer > 0 {
             self.delay_timer = self.delay_timer - 1;

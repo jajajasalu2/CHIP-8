@@ -5,7 +5,7 @@ use sdl2::pixels::Color;
 use sdl2::render::Canvas;
 
 pub struct Display {
-    pub gfx: [[bool; 32];64],
+    pub gfx: [[bool; 64];32],
     pub canvas: sdl2::render::Canvas<sdl2::video::Window>,
 }
 
@@ -20,12 +20,12 @@ impl Display {
             .build()
             .unwrap();
         Display {
-            gfx: [[false;32];64],
+            gfx: [[false;64];32],
             canvas: canvas,
         }
     } 
     pub fn clear_screen(&mut self) {
-        self.gfx = [[false;32];64];
+        self.gfx = [[false;64];32];
         self.draw();
     }
     pub fn draw(&mut self) {
