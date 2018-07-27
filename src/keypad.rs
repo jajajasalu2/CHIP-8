@@ -18,43 +18,66 @@ impl Keypad {
             key: key,
         }
     }
-    pub fn mapping(keycode: Keycode) -> u8 {
-        let mut hex_key = match keycode {
-            Keycode::Kp1 => 0x0,
-            Keycode::Kp2 => 0x1,
-            Keycode::Kp3 => 0x2,
-            Keycode::Kp4 => 0x3,
-            Keycode::Q => 0x4,
-            Keycode::W => 0x5,
-            Keycode::E => 0x6,
-            Keycode::R => 0x7,
-            Keycode::A => 0x8,
-            Keycode::S => 0x9,
-            Keycode::D => 0xA,
-            Keycode::F => 0xB,
-            Keycode::Z => 0xC,
-            Keycode::X => 0xD,
-            Keycode::C => 0xE,
-            Keycode::V => 0xF,
-	    _ => panic!("INVALID INPUT"),
+    pub fn mapping(keycode: Keycode) ->Option<u8> {
+        let hex_key = match keycode {
+            Keycode::Up => Some(0x0),
+            Keycode::Down => Some(0x1),
+            Keycode::Left => Some(0x2),
+            Keycode::Right => Some(0x3),
+            Keycode::Q => Some(0x4),
+            Keycode::W => Some(0x5),
+            Keycode::E => Some(0x6),
+            Keycode::R => Some(0x7),
+            Keycode::A => Some(0x8),
+            Keycode::S => Some(0x9),
+            Keycode::D => Some(0xA),
+            Keycode::F => Some(0xB),
+            Keycode::Z => Some(0xC),
+            Keycode::X => Some(0xD),
+            Keycode::C => Some(0xE),
+            Keycode::V => Some(0xF),
+            Keycode::Escape => Some(0xFF),
+	        _ => None,
         }; 
         hex_key
     }
-    pub fn set_keys(&mut self) {
+    pub fn get_input(&mut self) -> bool {
+        let mut up_or_down: bool;
+        let mut keycode: Keycode;
         for event in self.event_pump.poll_iter() {
             match event {
-                Event::KeyDown { keycode: Some(x), .. } => self.key[Keypad::mapping(x) as usize] = true,
-                Event::KeyUp { keycode: Some(x), .. } => self.key[Keypad::mapping(x) as usize] = false,
-                _ => (),
+                Event::KeyDown { keycode: Some(x), .. } => {
+                    up_or_down = true;
+                    keycode = x;
+                },
+                Event::KeyUp { keycode: Some(x), .. } => {
+                    up_or_down = false;
+                    keycode = x;
+                },
+                _ => continue,
             }
+            match Keypad::mapping(keycode) {
+                Some(hex) => 
+                    match hex {
+                        0xFF => return false,
+                        _ => {
+                            self.key[hex as usize] = up_or_down;
+                        },
+                },
+                None => (),
+            }   
         }
+        true
     }
     pub fn wait_for_input(&mut self) -> u8 {
         loop {
             for event in self.event_pump.poll_iter() {
                 match event {
                     Event::KeyDown { keycode:Some(x), ..  } => {
-                        return Keypad::mapping(x);
+                        match Keypad::mapping(x) {
+                           Some(x) => return x,
+                           None => (),
+                        }
                     },
                     _ => (),
                 }

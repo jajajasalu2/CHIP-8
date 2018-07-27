@@ -12,6 +12,8 @@ fn main() {
             system.display.draw();
             system.drawFlag = false;
         }
-        system.keypad.set_keys();
+        if !system.keypad.get_input() {
+            break;
+        }
     }
 }

@@ -94,6 +94,7 @@ impl CPU {
         match (op1,op2,op3,op4) {
             (0x0,0x0,0xE,0x0) => {
                 self.display.clear_screen();
+                self.pc += 2;
             },
             (0x0,0x0,0xE,0xE) => match self.stack.pop() {
                 Some(popped) => self.pc = popped,
@@ -139,9 +140,12 @@ impl CPU {
                 self.V[x] += NN;
                 self.pc += 2;
             },
-            (0x8,_,_,0x1) => self.V[x] = self.V[x] | self.V[y],
-            (0x8,_,_,0x2) => self.V[x] = self.V[x] & self.V[y],
-            (0x8,_,_,0x3) => self.V[x] = self.V[x] ^ self.V[y],
+            (0x8,_,_,0x1) => { 
+                self.V[x] = self.V[x] | self.V[y]; 
+                self.pc += 2;
+            },
+            (0x8,_,_,0x2) => {self.V[x] = self.V[x] & self.V[y]; self.pc += 2;},
+            (0x8,_,_,0x3) => {self.V[x] = self.V[x] ^ self.V[y]; self.pc +=2;},
             (0x8,_,_,0x4) =>{
                         if self.V[y] > (0xFF - self.V[x]) { 
                             self.V[0xF] = 1;
@@ -150,6 +154,7 @@ impl CPU {
                             self.V[0xF] = 0;
                         }
                         self.V[x] = self.V[x] + self.V[y];
+                        self.pc += 2;
                     },
             (0x8,_,_,0x5) => {
                         if self.V[x] <  self.V[y] {
@@ -159,10 +164,12 @@ impl CPU {
                             self.V[0xF] = 1;
                         }
                         self.V[x] = self.V[y] - self.V[x];
+                        self.pc += 2;
                     },
             (0x8,_,_,0x6) => {
                 self.V[0xF] = self.V[y] & 0x01;
                 self.V[x] = self.V[y] >> 1;
+                self.pc += 2;
             },
             (0x8,_,_,0x7) => {
                         if self.V[y] < self.V[x] {
@@ -172,10 +179,12 @@ impl CPU {
                             self.V[0xF] = 1;
                         }
                         self.V[x] = self.V[y] - self.V[x];
+                        self.pc += 2;
             },
             (0x8,_,_,0xE) => {
                 self.V[0xF] = self.V[y] & 0x10;
                 self.V[x] = self.V[y] << 1;
+                self.pc += 2;
             },
             (0x9,_,_,_) => {
                 if self.V[x] == self.V[y] {
@@ -187,12 +196,12 @@ impl CPU {
             },
             (0xA,_,_,_) => {
                 self.Index = NNN;
-                self.pc = self.pc + 2;
+                self.pc += 2;
             },
             (0xB,_,_,_) => self.pc = NNN + self.V[0x0] as u16,
             (0xC,_,_,_) => {
                 self.V[x] = NN & (rand::random::<u8>() as u8);
-                self.pc = self.pc + 2;
+                self.pc += 2;
             },
             (0xD,_,_,_) => {
                 let coord_x: u16 = self.V[x] as u16;
@@ -201,7 +210,7 @@ impl CPU {
                 for row in 0..height {
                     let pixel = self.memory[(self.Index + row as u16) as usize]; 
                     for column in 0..8 {
-                        if pixel & (0x80 >> column) != 0x00 {
+                        if (pixel & (0x80 >> column)) != 0x00 {
                             println!("{}",coord_y+row as u16);
                             if self.display.gfx[((coord_x+column as u16) + ((coord_y+row as u16) * 64)) as usize] == true {
                                 self.V[0xF] = 0x1;
@@ -233,6 +242,7 @@ impl CPU {
             },
             (0xF,_,0x0,0xA) => {
                 self.V[x] = self.keypad.wait_for_input();
+                self.pc += 2;
             },
             (0xF,_,0x1,0x8) => {
                 self.sound_timer = self.V[x];
