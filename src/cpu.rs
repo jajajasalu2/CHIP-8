@@ -82,7 +82,6 @@ impl CPU {
     }
     pub fn emulate_cycle(&mut self) {
         self.opcode = (self.memory[self.pc as usize] as u16) << 8 | (self.memory[self.pc as usize+1] as u16);
-        println!("{:X}",self.opcode);
         let NNN = self.opcode & 0x0FFF;
         let NN = (self.opcode & 0x00FF) as u8;
         let x: usize = ((self.opcode & 0x0F00) >> 8) as usize;
@@ -91,20 +90,19 @@ impl CPU {
         let op2 = (self.opcode & 0x0F00) >> 8;
         let op3 = (self.opcode & 0x00F0) >> 4;
         let op4 = self.opcode & 0x000F;
+        println!("{}: {:X}",self.pc,self.opcode);
         match (op1,op2,op3,op4) {
             (0x0,0x0,0xE,0x0) => {
                 self.display.clear_screen();
                 self.pc += 2;
             },
             (0x0,0x0,0xE,0xE) => match self.stack.pop() {
-                Some(popped) => self.pc = popped,
-                None => (),
+                Some(popped) => {self.pc = popped;println!("POPPED")},
+                None => println!("NONE"),
             },
-            //(0x0,_,_,_) => {
-                //Calls RCA 1802 program (?) at address NNN
-            //},
             (0x1,_,_,_) => self.pc = NNN,
             (0x2,_,_,_) => {
+                println!("PUSH");
                 self.stack.push(self.pc); 
                 self.pc = NNN;
             },
@@ -124,7 +122,7 @@ impl CPU {
                     self.pc = self.pc + 2; 
                 }
             },
-            (0x5,_,_,_) => {
+            (0x5,_,_,0x0) => {
                 if self.V[x] == self.V[y] {
                     self.pc += 4;
                 }
@@ -140,6 +138,10 @@ impl CPU {
                 self.V[x] += NN;
                 self.pc += 2;
             },
+            (0x8,_,_,0x0) => {
+                self.V[x] = self.V[y];
+                self.pc += 2;
+            },
             (0x8,_,_,0x1) => { 
                 self.V[x] = self.V[x] | self.V[y]; 
                 self.pc += 2;
@@ -153,7 +155,7 @@ impl CPU {
                         else {
                             self.V[0xF] = 0;
                         }
-                        self.V[x] = self.V[x] + self.V[y];
+                        self.V[x] += self.V[y];
                         self.pc += 2;
                     },
             (0x8,_,_,0x5) => {
@@ -163,7 +165,7 @@ impl CPU {
                         else {
                             self.V[0xF] = 1;
                         }
-                        self.V[x] = self.V[y] - self.V[x];
+                        self.V[x] -= self.V[y];
                         self.pc += 2;
                     },
             (0x8,_,_,0x6) => {
@@ -182,7 +184,7 @@ impl CPU {
                         self.pc += 2;
             },
             (0x8,_,_,0xE) => {
-                self.V[0xF] = self.V[y] & 0x10;
+                self.V[0xF] = ((self.V[y] & 0x10) >> 7);
                 self.V[x] = self.V[y] << 1;
                 self.pc += 2;
             },
@@ -214,7 +216,7 @@ impl CPU {
                             println!("{}",coord_y+row as u16);
                             if self.display.gfx[((coord_x+column as u16) + ((coord_y+row as u16) * 64)) as usize] == true {
                                 self.V[0xF] = 0x1;
-                            }
+                            } // casting to u16 because of multiply overflow in u8
                             self.display.gfx[((coord_x+column as u16)+ ((coord_y+row as u16) * 64)) as usize] ^= true; 
                         }
                     }
