@@ -5,7 +5,8 @@ For more information visit https://en.wikipedia.org/wiki/CHIP-8
 
 ##How to run##
 On linux, install cargo and clone the repo.
-```git clone https://github.com/jajajasalu2/CHIP-8
+```
+git clone https://github.com/jajajasalu2/CHIP-8
 sudo apt update
 sudo apt install cargo
 ```
