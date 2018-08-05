@@ -35,7 +35,7 @@ impl Display {
     pub fn draw(&mut self) {
        self.canvas.clear();
        for row in 0..32 {
-            let offset = 32 * row; 
+            let offset = 64 * row; 
             for column in 0..64 {
                 if self.gfx[offset + column] {
                     self.canvas.set_draw_color(Color::RGB(255,255,255));

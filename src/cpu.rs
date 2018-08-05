@@ -6,16 +6,19 @@ use std::io::*;
 use std::io::prelude::*;
 use std::fs::File;
 use std::path::Path;
+use std::thread::sleep;
+use std::time;
 
 pub struct CPU {
     memory: [u8; 4096],
     opcode: u16,
     V: [u8; 16],
-    Index: u16,
+    index: u16,
     pc: u16,
+    sp: usize,
     delay_timer: u8,
     sound_timer: u8,
-    stack: Vec<u16>,
+    stack: [u16; 16],
     pub drawFlag: bool,
     pub display: Display,
     pub keypad: Keypad,
@@ -23,14 +26,15 @@ pub struct CPU {
 
 impl CPU {
     pub fn new() -> Self {
-        let pc = 0x0200;
+        let pc = 0x200;
         let opcode = 0;
-        let Index = 0;
-        let stack = vec![];
-        let mut memory = [0x00; 4096];
+        let index = 0;
+        let stack = [0; 16];
+        let sp = 0;
+        let mut memory = [0; 4096];
         let delay_timer = 0;
         let sound_timer = 0;
-        let V = [0x00; 16];
+        let V = [0; 16];
         let sdl_context = sdl2::init().unwrap();
         let display = Display::new(&sdl_context);
         let keypad = Keypad::new(&sdl_context); 
@@ -52,15 +56,16 @@ impl CPU {
              0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
              0xF0, 0x80, 0xF0, 0x80, 0x80  // F
         ];
-        for i in 0x00..0x4F {
+        for i in 0x00..0x50 {
             memory[0x50 + i] = fontset[i];
         }
         CPU {
             opcode: opcode,
             memory: memory,
             pc: pc,
+            sp: sp,
             stack: stack,
-            Index: Index,
+            index: index,
             delay_timer: delay_timer,
             sound_timer: sound_timer,
             V: V,
@@ -82,6 +87,7 @@ impl CPU {
     }
     pub fn emulate_cycle(&mut self) {
         self.opcode = (self.memory[self.pc as usize] as u16) << 8 | (self.memory[self.pc as usize+1] as u16);
+        println!("{}: {:X}",self.pc,self.opcode);
         let NNN = self.opcode & 0x0FFF;
         let NN = (self.opcode & 0x00FF) as u8;
         let x: usize = ((self.opcode & 0x0F00) >> 8) as usize;
@@ -90,36 +96,37 @@ impl CPU {
         let op2 = (self.opcode & 0x0F00) >> 8;
         let op3 = (self.opcode & 0x00F0) >> 4;
         let op4 = self.opcode & 0x000F;
-        println!("{}: {:X}",self.pc,self.opcode);
+        //println!("{}: {:X}",self.pc,self.opcode);
         match (op1,op2,op3,op4) {
             (0x0,0x0,0xE,0x0) => {
                 self.display.clear_screen();
                 self.pc += 2;
             },
-            (0x0,0x0,0xE,0xE) => match self.stack.pop() {
-                Some(popped) => {self.pc = popped;println!("POPPED")},
-                None => println!("NONE"),
+            (0x0,0x0,0xE,0xE) => {
+                self.sp -= 1;
+                self.pc = self.stack[self.sp]; 
+                self.pc += 2;
             },
             (0x1,_,_,_) => self.pc = NNN,
             (0x2,_,_,_) => {
-                println!("PUSH");
-                self.stack.push(self.pc); 
+                self.stack[self.sp] = self.pc;
+                self.sp += 1;
                 self.pc = NNN;
             },
             (0x3,_,_,_) => {
                  if self.V[x] == NN {
-                    self.pc = self.pc + 4;
+                    self.pc += 4;
                  }
                  else  {
-                    self.pc = self.pc + 2;
+                    self.pc += 2;
                  }
             },
             (0x4,_,_,_) => {
                 if self.V[x] != NN {
-                    self.pc = self.pc + 4;
+                    self.pc += 4;
                 } 
                 else { 
-                    self.pc = self.pc + 2; 
+                    self.pc += 2; 
                 }
             },
             (0x5,_,_,0x0) => {
@@ -135,7 +142,8 @@ impl CPU {
                 self.pc += 2;
             },
             (0x7,_,_,_) => {
-                self.V[x] += NN;
+                let a = self.V[x] as u16;
+                self.V[x] = a.wrapping_add(NN as u16) as u8;
                 self.pc += 2;
             },
             (0x8,_,_,0x0) => {
@@ -147,7 +155,7 @@ impl CPU {
                 self.pc += 2;
             },
             (0x8,_,_,0x2) => {self.V[x] = self.V[x] & self.V[y]; self.pc += 2;},
-            (0x8,_,_,0x3) => {self.V[x] = self.V[x] ^ self.V[y]; self.pc +=2;},
+            (0x8,_,_,0x3) => {self.V[x] = self.V[x] ^ self.V[y]; self.pc += 2;},
             (0x8,_,_,0x4) =>{
                         if self.V[y] > (0xFF - self.V[x]) { 
                             self.V[0xF] = 1;
@@ -155,7 +163,10 @@ impl CPU {
                         else {
                             self.V[0xF] = 0;
                         }
-                        self.V[x] += self.V[y];
+                        println!("{} {}",self.V[x],self.V[y]); 
+                        let a = self.V[x] as u16;
+                        let b = self.V[y] as u16;
+                        self.V[x] = a.wrapping_add(b) as u8;
                         self.pc += 2;
                     },
             (0x8,_,_,0x5) => {
@@ -165,7 +176,9 @@ impl CPU {
                         else {
                             self.V[0xF] = 1;
                         }
-                        self.V[x] -= self.V[y];
+                        let a = self.V[x] as u16;
+                        let b = self.V[y] as u16;
+                        self.V[x] = a.wrapping_sub(b) as u8;
                         self.pc += 2;
                     },
             (0x8,_,_,0x6) => {
@@ -184,20 +197,21 @@ impl CPU {
                         self.pc += 2;
             },
             (0x8,_,_,0xE) => {
-                self.V[0xF] = ((self.V[y] & 0x10) >> 7);
-                self.V[x] = self.V[y] << 1;
+                self.V[0xF] = ((self.V[y] & 0x80) >> 7);
+                self.V[y] = self.V[y] << 1;
+                self.V[x] = self.V[y];
                 self.pc += 2;
             },
             (0x9,_,_,_) => {
                 if self.V[x] == self.V[y] {
-                    self.pc = self.pc + 2;
+                    self.pc += 2;
                 }
                 else {
-                    self.pc = self.pc + 4;
+                    self.pc += 4;
                 }
             },
             (0xA,_,_,_) => {
-                self.Index = NNN;
+                self.index = NNN;
                 self.pc += 2;
             },
             (0xB,_,_,_) => self.pc = NNN + self.V[0x0] as u16,
@@ -210,14 +224,16 @@ impl CPU {
                 let coord_y: u16 = self.V[y] as u16;
                 let height = (self.opcode & 0x000F) as u8;
                 for row in 0..height {
-                    let pixel = self.memory[(self.Index + row as u16) as usize]; 
+                    let pixel = self.memory[self.index.wrapping_add(row as u16) as usize]; 
                     for column in 0..8 {
                         if (pixel & (0x80 >> column)) != 0x00 {
-                            println!("{}",coord_y+row as u16);
-                            if self.display.gfx[((coord_x+column as u16) + ((coord_y+row as u16) * 64)) as usize] == true {
-                                self.V[0xF] = 0x1;
-                            } // casting to u16 because of multiply overflow in u8
-                            self.display.gfx[((coord_x+column as u16)+ ((coord_y+row as u16) * 64)) as usize] ^= true; 
+                            let index: usize = ((coord_x.wrapping_add(column as u16)) + (coord_y.wrapping_add(row as u16).wrapping_mul(64))) as usize;
+                            if index < 2048 {
+                                if self.display.gfx[index] {
+                                    self.V[0xF] = 0x1;
+                                } // casting to u16 because of multiply overflow in u8
+                                self.display.gfx[index] ^= true; 
+                            }
                         }
                     }
                 }
@@ -255,21 +271,21 @@ impl CPU {
                 self.pc += 2;
             },
             (0xF,_,0x1,0xE) => {
-                self.Index += self.V[x] as u16;
+                self.index += self.V[x] as u16;
                 self.pc += 2;
             },
             (0xF,_,0x2,0x9) => {
-                self.Index = self.V[x] as u16;
+                self.index = self.V[x] as u16;
                 self.pc += 2;
             },
             (0xF,_,0x3,0x3) => {
-                self.memory[(self.Index) as usize] = self.V[x] / 100;
-                self.memory[(self.Index + 0x1) as usize] = (self.V[x] / 10) % 10;
-                self.memory[(self.Index + 0x2) as usize] = self.V[x] % 10; 
+                self.memory[(self.index) as usize] = self.V[x] / 100;
+                self.memory[(self.index + 0x1) as usize] = (self.V[x] / 10) % 10;
+                self.memory[(self.index + 0x2) as usize] = self.V[x] % 10; 
                 self.pc += 2;
             },
             (0xF,_,0x5,0x5) => {
-                let mut offset = self.Index as usize;
+                let mut offset = self.index as usize;
                 for i in 0x0..x {
                     if offset > 4096 {
                         panic!("MEMORY CORRUPTION... EXITING");
@@ -280,7 +296,7 @@ impl CPU {
                 self.pc += 2;
             },
             (0xF,_,0x6,0x5) => {
-                let mut offset = self.Index as usize;
+                let mut offset = self.index as usize;
                 for i in 0x0..x {
                     if offset > 4096 {
                         panic!("MEMORY CORRUPTION... EXITING");
@@ -301,7 +317,8 @@ impl CPU {
                 self.sound_timer = self.sound_timer - 1
             },
             _ => (),
-        } 
+        }
+        sleep(time::Duration::from_millis(10));
     }
 }
 
