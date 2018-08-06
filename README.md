@@ -8,6 +8,7 @@ On linux, install cargo and clone the repo.
 ```
 git clone https://github.com/jajajasalu2/CHIP-8
 sudo apt update
+sudo apt install libsdl2-dev
 sudo apt install cargo
 ```
 An example to run a game:
